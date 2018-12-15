@@ -1,9 +1,9 @@
 import os
 import sys
-sys.path.insert(0, os.path.abspath('..'))
-
-from lru.lru import LRUCache
 import unittest
+
+from lru import LRUCache
+
 
 class LRUCacheTestCase(unittest.TestCase):
 

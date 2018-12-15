@@ -4,8 +4,10 @@ try:
 except ImportError:
   from collections import MutableMapping
 
+
 class Node(object):
   __slots__ = ('next', 'prev', 'key', 'value', '__weakref__')
+
 
 class LRUCache(MutableMapping):
   def __init__(*args, **kwargs):
@@ -134,5 +136,4 @@ class LRUCache(MutableMapping):
         self[key] = value
 
   def __repr__(self):
-    return '\n'.join(('%s:%s' % (k, v)
-        for k, v in self.items()))
+    return '\n'.join(('%s:%s' % (k, v) for k, v in self.items()))
