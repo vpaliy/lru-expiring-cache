@@ -7,7 +7,10 @@ import weakref
 
 from lru.compat import queue, MutableMapping
 
+
 _sentinel = object()
+
+_infinite = object()
 
 
 def lock(method):
@@ -33,7 +36,7 @@ class Node(object):
 
   @property
   def is_expired(self):
-    if self.expires is not None:
+    if self.expires is not _infinite:
       return time.now() > self.expires
     return False
 
@@ -56,12 +59,26 @@ class CacheCleaner(threading.Thread):
         break
       if isinstance(node, Node):
         with condition:
-          while not node.is_expired:
+          while node and (not node.is_expired):
             condition.wait(node.expires)
           queue.task_done()
           cache = self._cache_ref()
-          if cache is not None:
+          if cache and node:
             del cache[node.key]
+
+
+class CleanManager(object):
+  def __init__(self, cache):
+    self._queue = queue = queue.PriorityQueue()
+    self._condition = condition = threading.Condition()
+    self._cache_cleaner = CacheCleaner(queue, cache, condition)
+
+  def add(self, node):
+    node = weakref.proxy(node)
+    self._queue.put(node)
+
+  def on_delete(self):
+    self._condition.notify()
 
 
 class LRUCache(MutableMapping):
@@ -81,16 +98,14 @@ class LRUCache(MutableMapping):
       root.next = root.prev = root
       self._mapping = {}
       if 'expires' in kwargs:
-        self._expires = kwargs.get('expires')
-        self._lock = threading.RLock()
-        self._queue = queue.Queue()
+        self._expires = kwargs['expires']
         self._init_cleaner()
     del kwargs['capacity']
     self.update(*args, **kwargs)
 
   def _init_cleaner(self):
-    cleaner = CacheCleaner(self._queue, self)
-    cleaner.start()
+    self._cleaner = CacheCleaner(self)
+    self._lock = threading.RLock()
 
   def _bump_up(self, node):
     root = self._root
@@ -131,12 +146,15 @@ class LRUCache(MutableMapping):
     node = Node(key, value, expires=expires)
     self._mapping[key] = node
     self._connect_with_root(node)
+    if expires and not hasattr(self, '_cleaner'):
+      self._init_cleaner()
+      self._cleaner.add(node)
 
   @property
   def expires(self):
-    if self.expires is not None:
-      return time.now() + self.expires
-    return None
+    if self._expires is not None:
+      return time.now() + self._expires
+    return _infinite
 
   @lock
   def __delitem__(self, key):
@@ -144,7 +162,9 @@ class LRUCache(MutableMapping):
     next, prev = node.next, node.prev
     next.prev = prev
     prev.next = next
-    node.next = node.prev = None
+    node.next = node.prev = None; del node
+    if hasattr(self, '_cleaner'):
+      self._cleaner.on_delete()
 
   def __iter__(self):
     return iter(self.values())
