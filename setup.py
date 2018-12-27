@@ -1,92 +1,64 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
+#!/usr/bin/env python
 import os
 import sys
 import re
 import io
 from shutil import rmtree
 
-from setuptools import setup, find_packages, Command
+from setuptools import setup, find_packages
 
 here = os.path.abspath(os.path.dirname(__file__))
 
 
-NAME = 'lru-cache'
-DESCRIPTION = 'LRU cache data structure.'
-URL = 'https://github.com/vpaliy/lru-cache'
-EMAIL = 'vpaliy97@gmail.com'
-AUTHOR = 'Vasyl Paliy'
-REQUIRES_PYTHON = '>=2.7',
-VERSION = None
+name = 'lru-cache'
+description = 'LRU cache with nodes that expire'
+url = 'https://github.com/vpaliy/lru-cache'
+email = 'vpaliy97@gmail.com'
+author = 'Vasyl Paliy'
+requires_python = '>=2.7'
+license = 'MIT'
+version = None
+
 
 with io.open(os.path.join(here, 'lru', '__init__.py'), encoding='utf-8') as fp:
-  VERSION = re.compile(r".*__version__ = '(.*?)'", re.S).match(fp.read()).group(1)
+  version = re.compile(r".*__version__ = '(.*?)'", re.S).match(fp.read()).group(1)
 
 try:
   with io.open(os.path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = '\n' + f.read()
-except IOError:
+except FileNotFoundError:
     long_description = str()
 
-
-class UploadCommand(Command):
-  """Support setup.py upload."""
-
-  description = 'Build and publish the package.'
-  user_options = []
-
-  @staticmethod
-  def status(s):
-    """Prints things in bold."""
-    print('\033[1m{0}\033[0m'.format(s))
-
-  def initialize_options(self):
-    pass
-
-  def finalize_options(self):
-    pass
-
-  def run(self):
-    try:
-      self.status('Removing previous builds…')
-      rmtree(os.path.join(here, 'dist'))
-    except OSError:
-      pass
-
-    self.status('Building Source and Wheel (universal) distribution…')
-    os.system('{0} setup.py sdist bdist_wheel --universal'.format(sys.executable))
-
-    self.status('Uploading the package to PyPI via Twine…')
-    os.system('twine upload dist/*')
-
-    sys.exit()
-
+try:
+  with io.open(os.path.join(here, 'requirements.txt'), encoding='utf-8') as fp:
+    requires = [r.strip() for r in fp.readlines()]
+except FileNotFoundError:
+    requires = [
+      'six',
+      'future-strings'
+    ]
 
 setup(
-    name=NAME,
-    version=VERSION,
-    description=DESCRIPTION,
+    name=name,
+    version=version,
+    description=description,
     long_description=long_description,
     long_description_content_type='text/markdown',
-    author=AUTHOR,
-    author_email=EMAIL,
-    url=URL,
-    license='MIT',
-    package_data={
-      '': ['*.txt', '*.rst']
-    },
-    python_requires=REQUIRES_PYTHON,
+    author=author,
+    author_email=email,
+    url=url,
+    license=license,
+    python_requires=requires_python,
     packages=find_packages(exclude=('tests',)),
-    use_2to3=True,
-    include_package_data=True,
+    install_requires=requires,
     classifiers=[
         'Intended Audience :: Developers',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
-        'Programming Language :: Python :: Implementation :: CPython',
-        'Programming Language :: Python :: Implementation :: PyPy'
-    ],
-    cmdclass={
-      'upload': UploadCommand,
-    },
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6'
+    ]
 )

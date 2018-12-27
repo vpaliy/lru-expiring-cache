@@ -5,11 +5,11 @@ import threading
 import time
 import weakref
 
+from functools import total_ordering
 from lru.compat import queue, MutableMapping
 
 
 _sentinel = object()
-
 _infinite = object()
 
 
@@ -22,9 +22,9 @@ def lock(method):
   return _lock
 
 
-class Node(object):
+class _Node(object):
   __slots__ = ('next', 'prev', 'key',
-               'value', 'expires', '__weakref__')
+               'value', '__weakref__')
 
   def __init__(self, key=None, value=None,
                next=None, prev=None, expires=None):
@@ -32,13 +32,35 @@ class Node(object):
     self.value = value
     self.next = next
     self.prev = prev
+
+
+@total_ordering
+class _ExpNode(_Node):
+  __slots__ =  ('expires', )
+
+  def __init__(self, expires=None, *args, **kwargs):
+    super(_ExpNode, self).__init__(*args, **kwargs)
     self.expires = expires
 
   @property
   def is_expired(self):
-    if self.expires is not _infinite:
-      return time.now() > self.expires
-    return False
+    return time.now() > self.expires
+
+  def __eq__(self, other):
+    if not isinstance(other, _ExpNode):
+      raise TypeError('Invalid type')
+    return self.expires == other.expires
+
+  def __lt__(self, other):
+    if not isinstance(other, _ExpNode):
+      raise TypeError('Invalid type')
+    return self.expires > other._expires
+
+
+def _create_node(key=None, value=None, next=None, prev=None, expires=None):
+  if expires is not None:
+    return _ExpNode(**locals())
+  return Node(**locals())
 
 
 class CacheCleaner(threading.Thread):
@@ -61,6 +83,13 @@ class CacheCleaner(threading.Thread):
         with condition:
           while node and (not node.is_expired):
             condition.wait(node.expires)
+            try:
+              fast = queue.get_nowait()
+              if (fast and node) and (fast < node):
+                queue.put(node)
+                node = fast
+            except queue.Empty:
+              pass
           queue.task_done()
           cache = self._cache_ref()
           if cache and node:
@@ -74,8 +103,10 @@ class CleanManager(object):
     self._cache_cleaner = CacheCleaner(queue, cache, condition)
 
   def add(self, node):
-    node = weakref.proxy(node)
-    self._queue.put(node)
+    if isinstance(node, _ExpNode):
+      node = weakref.proxy(node)
+      self._queue.put(node)
+      self._condition.notify()
 
   def on_delete(self):
     self._condition.notify()
@@ -134,16 +165,14 @@ class LRUCache(MutableMapping):
   def add(self, key, value, expires=None):
     if any([key is None, value is None]):
       raise TypeError
-    if key in self._mapping:
-      node = self._mapping[key]
-      node.value = value
-      self._bump_up(node)
-      return
-    if len(self._mapping) > self._capacity:
-      del self[self._root.prev.key]
     if expires is None:
       expires = getattr(self, 'expires', None)
-    node = Node(key, value, expires=expires)
+    if key in self._mapping:
+      node = self._mapping[key]
+      del self[node.key]
+    if len(self._mapping) > self._capacity:
+      del self[self._root.prev.key]
+    node = _create_node(key, value, expires=expires)
     self._mapping[key] = node
     self._connect_with_root(node)
     if expires and not hasattr(self, '_cleaner'):
