@@ -8,17 +8,16 @@ import weakref
 from functools import total_ordering
 from lru.compat import queue, MutableMapping
 
-
 _sentinel = object()
 _infinite = object()
 
 
 def lock(method):
   def _lock(self, *args, **kwargs):
-    if hasattr('_lock', self):
+    if hasattr(self, '_lock'):
       with self._lock:
-        return self.method(*args, **kwargs)
-    return self.method(*args, **kwargs)
+        return method(self, *args, **kwargs)
+    return method(self, *args, **kwargs)
   return _lock
 
 
@@ -43,8 +42,12 @@ class _ExpNode(_Node):
     self.expires = expires
 
   @property
+  def remaining(self):
+    return self.expires - time.time()
+
+  @property
   def is_expired(self):
-    return time.now() > self.expires
+    return time.time() > self.expires
 
   def __eq__(self, other):
     if not isinstance(other, _ExpNode):
@@ -54,22 +57,22 @@ class _ExpNode(_Node):
   def __lt__(self, other):
     if not isinstance(other, _ExpNode):
       raise TypeError('Invalid type')
-    return self.expires > other._expires
+    return self.expires > other.expires
 
 
 def _create_node(key=None, value=None, next=None, prev=None, expires=None):
   if expires is not None:
     return _ExpNode(**locals())
-  return Node(**locals())
+  return _Node(**locals())
 
 
 class CacheCleaner(threading.Thread):
   daemon = True
 
-  def __init__(self, queue, cache, **kwargs):
+  def __init__(self, queue, cache, condition, **kwargs):
     self._queue = queue
     self._cache_ref = weakref.ref(cache)
-    self._condition = threading.Condition()
+    self._condition = condition
     super(CacheCleaner, self).__init__(**kwargs)
 
   def run(self):
@@ -79,10 +82,10 @@ class CacheCleaner(threading.Thread):
       node = queue.get()
       if node is _sentinel:
         break
-      if isinstance(node, Node):
+      if isinstance(node, _ExpNode):
         with condition:
           while node and (not node.is_expired):
-            condition.wait(node.expires)
+            condition.wait(node.remaining)
             try:
               fast = queue.get_nowait()
               if (fast and node) and (fast < node):
@@ -98,18 +101,27 @@ class CacheCleaner(threading.Thread):
 
 class CleanManager(object):
   def __init__(self, cache):
-    self._queue = queue = queue.PriorityQueue()
-    self._condition = condition = threading.Condition()
-    self._cache_cleaner = CacheCleaner(queue, cache, condition)
+    self._queue = queue.PriorityQueue()
+    self._condition = threading.Condition()
+    self._cache_cleaner = CacheCleaner(
+      self._queue, cache, self._condition
+    )
+    self._initialized = False
 
   def add(self, node):
     if isinstance(node, _ExpNode):
+      if not self._initialized:
+        self._initialized = True
+        self._cache_cleaner.start()
+      print(node)
       node = weakref.proxy(node)
       self._queue.put(node)
-      self._condition.notify()
+      if self._condition._is_owned():
+        self._condition.notify()
 
   def on_delete(self):
-    self._condition.notify()
+    if self._condition._is_owned():
+      self._condition.notify()
 
 
 class LRUCache(MutableMapping):
@@ -124,7 +136,7 @@ class LRUCache(MutableMapping):
       self._capacity
     except AttributeError:
       self._capacity = kwargs['capacity']
-      self._hardroot = Node()
+      self._hardroot = _Node()
       root = self._root = weakref.proxy(self._hardroot)
       root.next = root.prev = root
       self._mapping = {}
@@ -135,7 +147,7 @@ class LRUCache(MutableMapping):
     self.update(*args, **kwargs)
 
   def _init_cleaner(self):
-    self._cleaner = CacheCleaner(self)
+    self._cleaner = CleanManager(self)
     self._lock = threading.RLock()
 
   def _bump_up(self, node):
@@ -177,12 +189,13 @@ class LRUCache(MutableMapping):
     self._connect_with_root(node)
     if expires and not hasattr(self, '_cleaner'):
       self._init_cleaner()
+    if hasattr(self, '_cleaner'):
       self._cleaner.add(node)
 
   @property
   def expires(self):
     if self._expires is not None:
-      return time.now() + self._expires
+      return time.time() + self._expires
     return _infinite
 
   @lock
