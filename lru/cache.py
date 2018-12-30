@@ -57,7 +57,10 @@ class _ExpNode(_Node):
   def __lt__(self, other):
     if not isinstance(other, _ExpNode):
       raise TypeError(f'Expected _ExpNode, got {type(other)}')
-    return self.expires > other.expires
+    return self.expires < other.expires
+
+  def __repr__(self):
+    return f'<_ExpNode key:{self.key}:({self.remaining})>'
 
 
 def _create_node(key=None, value=None, next=None, prev=None, expires=None):
@@ -78,7 +81,10 @@ class CacheCleaner(threading.Thread):
   def run(self):
     node_queue = self._queue
     condition = self._condition
-    while self._cache_ref():
+    while True:
+      cache = self._cache_ref()
+      if cache is None:
+        break
       node = node_queue.get()
       if node is _sentinel:
         break
@@ -91,10 +97,11 @@ class CacheCleaner(threading.Thread):
               if (fast and node) and (fast < node):
                 node_queue.put(node)
                 node = fast
+              else:
+                node_queue.put(fast)
             except queue.Empty:
               pass
           node_queue.task_done()
-          cache = self._cache_ref()
           if cache and node:
             del cache[node.key]
           cache = None
@@ -116,12 +123,18 @@ class CleanManager(object):
         self._cache_cleaner.start()
       node = weakref.proxy(node)
       self._queue.put(node)
-      if self._condition._is_owned():
-        self._condition.notify()
+      self._notify()
+
+  def _notify(self):
+    condition = self._condition
+    try:
+      with condition:
+        condition.notify()
+    except RuntimeError:
+      pass
 
   def on_delete(self):
-    if self._condition._is_owned():
-      self._condition.notify()
+    self._notify()
 
 
 class LruCache(MutableMapping):
@@ -176,7 +189,7 @@ class LruCache(MutableMapping):
   @lock
   def add(self, key, value, expires=None):
     if any([key is None, value is None]):
-      raise TypeError('Key and value must not be None')
+      raise ValueError('Key and value must not be None')
     expires = self._get_expiration_time(expires)
     if key in self._mapping:
       node = self._mapping[key]
@@ -280,4 +293,5 @@ class LruCache(MutableMapping):
         self[key] = value
 
   def __repr__(self):
-    return '\n'.join((f'{k}:{v}' for k, v in self.items()))
+    items = ', '.join((f"{k}: {v}" for k, v in self.items()))
+    return f'{{{items}}}'
