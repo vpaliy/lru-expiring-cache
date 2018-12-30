@@ -51,12 +51,12 @@ class _ExpNode(_Node):
 
   def __eq__(self, other):
     if not isinstance(other, _ExpNode):
-      raise TypeError('Invalid type')
+      raise TypeError(f'Expected _ExpNode, got {type(other)}')
     return self.expires == other.expires
 
   def __lt__(self, other):
     if not isinstance(other, _ExpNode):
-      raise TypeError('Invalid type')
+      raise TypeError(f'Expected _ExpNode, got {type(other)}')
     return self.expires > other.expires
 
 
@@ -76,10 +76,10 @@ class CacheCleaner(threading.Thread):
     super(CacheCleaner, self).__init__(**kwargs)
 
   def run(self):
-    queue = self._queue
+    node_queue = self._queue
     condition = self._condition
     while self._cache_ref():
-      node = queue.get()
+      node = node_queue.get()
       if node is _sentinel:
         break
       if isinstance(node, _ExpNode):
@@ -87,16 +87,17 @@ class CacheCleaner(threading.Thread):
           while node and (not node.is_expired):
             condition.wait(node.remaining)
             try:
-              fast = queue.get_nowait()
+              fast = node_queue.get_nowait()
               if (fast and node) and (fast < node):
-                queue.put(node)
+                node_queue.put(node)
                 node = fast
             except queue.Empty:
               pass
-          queue.task_done()
+          node_queue.task_done()
           cache = self._cache_ref()
           if cache and node:
             del cache[node.key]
+          cache = None
 
 
 class CleanManager(object):
@@ -113,7 +114,6 @@ class CleanManager(object):
       if not self._initialized:
         self._initialized = True
         self._cache_cleaner.start()
-      print(node)
       node = weakref.proxy(node)
       self._queue.put(node)
       if self._condition._is_owned():
@@ -124,10 +124,10 @@ class CleanManager(object):
       self._condition.notify()
 
 
-class LRUCache(MutableMapping):
+class LruCache(MutableMapping):
   def __init__(*args, **kwargs):
     if not args:
-      raise TypeError('__init__() needs an argument')
+      raise ValueError('__init__() needs an argument')
     self, args = args[0], args[1:]
     kwargs = kwargs or {'capacity':10}
     if kwargs.setdefault('capacity', 10) <= 0:
@@ -176,9 +176,8 @@ class LRUCache(MutableMapping):
   @lock
   def add(self, key, value, expires=None):
     if any([key is None, value is None]):
-      raise TypeError
-    if expires is None:
-      expires = getattr(self, 'expires', None)
+      raise TypeError('Key and value must not be None')
+    expires = self._get_expiration_time(expires)
     if key in self._mapping:
       node = self._mapping[key]
       del self[node.key]
@@ -192,11 +191,12 @@ class LRUCache(MutableMapping):
     if hasattr(self, '_cleaner'):
       self._cleaner.add(node)
 
-  @property
-  def expires(self):
-    if self._expires is not None:
-      return time.time() + self._expires
-    return _infinite
+  def _get_expiration_time(self, expires):
+    if expires is not None:
+      expires = time.time() + expires
+    elif self._expires is not None:
+      expires = time.time() + self._expires
+    return expires
 
   @lock
   def __delitem__(self, key):

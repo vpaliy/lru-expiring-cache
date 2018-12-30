@@ -2,32 +2,32 @@ import os
 import sys
 import unittest
 
-from lru import LRUCache
+from lru import LruCache
 
 
-class LRUCacheTestCase(unittest.TestCase):
+class LruCacheTestCase(unittest.TestCase):
 
   def test_init(self):
     with self.assertRaises(ValueError):
-      LRUCache(capacity=0)
+      LruCache(capacity=0)
     pairs = [('a', 1), ('b', 2), ('c', 3), ('d', 4)]
-    self.assertEqual(sorted(LRUCache(pairs).items()), pairs)
-    self.assertEqual(sorted(LRUCache(dict(pairs)).items()), pairs)
-    self.assertEqual(sorted(LRUCache(**dict(pairs)).items()), pairs)
-    self.assertEqual(sorted(LRUCache(pairs, e=4, f=5, r=6).items()),
+    self.assertEqual(sorted(LruCache(pairs).items()), pairs)
+    self.assertEqual(sorted(LruCache(dict(pairs)).items()), pairs)
+    self.assertEqual(sorted(LruCache(**dict(pairs)).items()), pairs)
+    self.assertEqual(sorted(LruCache(pairs, e=4, f=5, r=6).items()),
         pairs + [('e', 4), ('f', 5), ('r', 6)])
-    cache = LRUCache(pairs)
+    cache = LruCache(pairs)
     cache.__init__([('e', 5), ('t', 6)])
     self.assertEqual(sorted(cache.items()), pairs + [('e', 5), ('t', 6)])
 
   def test_setitem(self):
     with self.assertRaises(TypeError):
-      LRUCache()['a'] = None
+      LruCache()['a'] = None
     with self.assertRaises(TypeError):
-      LRUCache()[None] = 'a'
+      LruCache()[None] = 'a'
     with self.assertRaises(TypeError):
-      LRUCache()[None] = None
-    cache = LRUCache(capacity=10)
+      LruCache()[None] = None
+    cache = LruCache(capacity=10)
     cache['a'] = 1
     cache['b'] = 2
     self.assertEqual(cache.items(), [('b', 2), ('a', 1)])
@@ -42,21 +42,21 @@ class LRUCacheTestCase(unittest.TestCase):
     self.assertEqual(cache.items(), [('c', 5), ('b', 4), ('a', 3)])
 
   def test_contains(self):
-    self.assertFalse('a' in LRUCache())
-    self.assertFalse('a' in LRUCache([('b', 2), ('c', 3), ('d', 4)]))
-    self.assertTrue('b' in LRUCache([('b', 2), ('c', 3), ('d', 4)]))
-    self.assertTrue('b' not in LRUCache())
-    self.assertTrue('b' not in LRUCache([('c', 3), ('d', 4)]))
-    cache = LRUCache([('b', 2), ('c', 3), ('d', 4)])
+    self.assertFalse('a' in LruCache())
+    self.assertFalse('a' in LruCache([('b', 2), ('c', 3), ('d', 4)]))
+    self.assertTrue('b' in LruCache([('b', 2), ('c', 3), ('d', 4)]))
+    self.assertTrue('b' not in LruCache())
+    self.assertTrue('b' not in LruCache([('c', 3), ('d', 4)]))
+    cache = LruCache([('b', 2), ('c', 3), ('d', 4)])
     self.assertTrue('a' not in cache)
     cache['a'] = 3
     self.assertTrue('a' in cache)
 
   def test_getitem(self):
     pairs = [('a', 1), ('b', 2), ('c', 3), ('d', 4)]
-    cache = LRUCache(pairs)
+    cache = LruCache(pairs)
     with self.assertRaises(KeyError):
-      LRUCache()['key']
+      LruCache()['key']
     with self.assertRaises(KeyError):
       cache['key']
     for key, value in pairs:
@@ -64,9 +64,9 @@ class LRUCacheTestCase(unittest.TestCase):
 
   def test_delitem(self):
     with self.assertRaises(KeyError):
-      del LRUCache()['key']
+      del LruCache()['key']
     pairs = [('a', 1), ('b', 2), ('c', 3), ('d', 4)]
-    cache = LRUCache(pairs)
+    cache = LruCache(pairs)
     with self.assertRaises(KeyError):
       del cache['key']
     for index, (key, value) in enumerate(pairs):
@@ -81,7 +81,7 @@ class LRUCacheTestCase(unittest.TestCase):
 
   def test_len(self):
     pairs = [('a', 1), ('b', 2), ('c', 3), ('d', 4)]
-    cache = LRUCache(pairs)
+    cache = LruCache(pairs)
     self.assertEqual(len(pairs), len(cache))
     del cache['a']
     self.assertEqual(len(pairs) - 1, len(cache))
@@ -90,7 +90,7 @@ class LRUCacheTestCase(unittest.TestCase):
 
   def test_clear(self):
     pairs = [('a', 1), ('b', 2), ('c', 3), ('d', 4)]
-    cache = LRUCache(pairs)
+    cache = LruCache(pairs)
     self.assertEqual(len(cache), len(pairs))
     cache.clear()
     self.assertEqual(len(cache), 0)
@@ -104,33 +104,33 @@ class LRUCacheTestCase(unittest.TestCase):
   def test_iter(self):
     pairs = [('a', 1), ('b', 2), ('c', 3), ('d', 4)]
     values = [value for key, value in pairs][::-1]
-    cache = LRUCache(pairs)
+    cache = LruCache(pairs)
     self.assertEqual(list(iter(cache)), values)
 
   def test_copy(self):
     pairs = [('a', 1), ('b', 2), ('c', 3), ('d', 4)]
-    cache = LRUCache(pairs)
+    cache = LruCache(pairs)
     self.assertEqual(cache.copy().items(), cache.items())
     self.assertEqual(cache.copy().keys(), cache.keys())
-    self.assertEqual(LRUCache().items(), LRUCache().copy().items())
-    self.assertEqual(LRUCache().keys(), LRUCache().copy().keys())
+    self.assertEqual(LruCache().items(), LruCache().copy().items())
+    self.assertEqual(LruCache().keys(), LruCache().copy().keys())
 
   def test_repr(self):
     pairs = [('a', 1), ('b', 2), ('c', 3), ('d', 4)]
-    cache = LRUCache(pairs)
+    cache = LruCache(pairs)
     self.assertEqual(repr(cache),'\n'.join(['%s:%s' % (key, value)
         for key, value in pairs[::-1]]))
-    self.assertEqual(repr(LRUCache()), str())
+    self.assertEqual(repr(LruCache()), str())
 
   def test_eq(self):
     pairs = [('a', 1), ('b', 2), ('c', 3), ('d', 4)]
-    cache = LRUCache(pairs)
+    cache = LruCache(pairs)
     self.assertTrue(cache == cache)
-    self.assertTrue(LRUCache() == LRUCache())
-    self.assertTrue(LRUCache(pairs) == LRUCache(pairs))
-    self.assertFalse(LRUCache() == list())
-    self.assertFalse(LRUCache(pairs) == LRUCache(pairs[1:]))
-    self.assertFalse(LRUCache(pairs) == LRUCache(pairs[::-1]))
+    self.assertTrue(LruCache() == LruCache())
+    self.assertTrue(LruCache(pairs) == LruCache(pairs))
+    self.assertFalse(LruCache() == list())
+    self.assertFalse(LruCache(pairs) == LruCache(pairs[1:]))
+    self.assertFalse(LruCache(pairs) == LruCache(pairs[::-1]))
 
 def main():
   unittest.main()
