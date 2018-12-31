@@ -6,6 +6,11 @@ import unittest
 from lru import LruCache
 
 
+def _get_printable(items):
+  items = ', '.join(f"{k}: {v}" for k, v in items)
+  return f'{{{items}}}'
+
+
 class LruCacheTestCase(unittest.TestCase):
 
   def test_init(self):
@@ -22,11 +27,11 @@ class LruCacheTestCase(unittest.TestCase):
     self.assertEqual(sorted(cache.items()), pairs + [('e', 5), ('t', 6)])
 
   def test_setitem(self):
-    with self.assertRaises(TypeError):
+    with self.assertRaises(ValueError):
       LruCache()['a'] = None
-    with self.assertRaises(TypeError):
+    with self.assertRaises(ValueError):
       LruCache()[None] = 'a'
-    with self.assertRaises(TypeError):
+    with self.assertRaises(ValueError):
       LruCache()[None] = None
     cache = LruCache(capacity=10)
     cache['a'] = 1
@@ -120,9 +125,8 @@ class LruCacheTestCase(unittest.TestCase):
     pairs = [('a', 1), ('b', 2), ('c', 3), ('d', 4)]
     cache = LruCache(pairs)
 
-    self.assertEqual(repr(cache),'\n'.join(['%s:%s' % (key, value)
-        for key, value in pairs[::-1]]))
-    self.assertEqual(repr(LruCache()), str())
+    self.assertEqual(repr(cache), _get_printable(pairs[::-1]))
+    self.assertEqual(repr(LruCache()), '{}')
 
   def test_eq(self):
     pairs = [('a', 1), ('b', 2), ('c', 3), ('d', 4)]
@@ -133,6 +137,7 @@ class LruCacheTestCase(unittest.TestCase):
     self.assertFalse(LruCache() == list())
     self.assertFalse(LruCache(pairs) == LruCache(pairs[1:]))
     self.assertFalse(LruCache(pairs) == LruCache(pairs[::-1]))
+
 
 def main():
   unittest.main()

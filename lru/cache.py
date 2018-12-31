@@ -203,6 +203,7 @@ class LruCache(MutableMapping):
     node = _create_node(key, value, expires=expires)
     self._mapping[key] = node
     self._connect_with_root(node)
+    # TODO: remove the hasattr checks
     if expires and not hasattr(self, '_cleaner'):
       self._init_cleaner()
     if hasattr(self, '_cleaner'):
@@ -211,7 +212,7 @@ class LruCache(MutableMapping):
   def _get_expiration_time(self, expires):
     if expires is not None:
       expires = time.time() + expires
-    elif self._expires is not None:
+    elif hasattr(self, '_expires'):
       expires = time.time() + self._expires
     return expires
 
