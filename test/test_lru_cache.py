@@ -2,8 +2,10 @@
 import os
 import sys
 import unittest
+from unittest.mock import patch
 
 from lru import LruCache
+from lru.cache import _create_node, _ExpNode, _Node, lock
 
 
 def _get_printable(items):
@@ -12,7 +14,6 @@ def _get_printable(items):
 
 
 class LruCacheTestCase(unittest.TestCase):
-
   def test_init(self):
     with self.assertRaises(ValueError):
       LruCache(capacity=0)
@@ -137,6 +138,65 @@ class LruCacheTestCase(unittest.TestCase):
     self.assertFalse(LruCache() == list())
     self.assertFalse(LruCache(pairs) == LruCache(pairs[1:]))
     self.assertFalse(LruCache(pairs) == LruCache(pairs[::-1]))
+
+  def test_create_node(self):
+    node = _create_node(expires=10)
+    self.assertIsInstance(node, _ExpNode)
+
+    node = _create_node()
+    self.assertIsInstance(node, _Node)
+
+  @patch('threading.RLock')
+  @patch('lru.cache._CleanManager')
+  @patch('lru.cache._create_node')
+  def test_add(self, create_mock, CleanManagerMock, RLockMock):
+    cleanManager = CleanManagerMock()
+    lock = RLockMock()
+    node = _ExpNode(key='a', value='b', expires=10)
+    create_mock.return_value = node
+
+    cache = LruCache()
+    cache.add('a', 'b', expires=10)
+
+    cleanManager.add.assert_called_with(node)
+    lock.__enter__.assert_not_called()
+    lock.__exit__.assert_not_called()
+
+    cache.add('a', 'b', expires=10)
+
+    cleanManager.add.assert_called()
+    lock.__enter__.assert_called()
+    lock.__exit__.assert_called()
+
+  @patch('threading.RLock')
+  @patch('lru.cache._CleanManager')
+  @patch('lru.cache._create_node')
+  def test_delete(self, create_mock, CleanManagerMock, RLockMock):
+    cleanManager = CleanManagerMock()
+    lock = RLockMock()
+    node = _ExpNode(key='a', value='b', expires=10)
+    create_mock.return_value = node
+
+    cache = LruCache()
+    cache.add('a', 'b', expires=10)
+    del cache['a']
+
+    cleanManager.add.assert_called_with(node)
+    cleanManager.on_delete.assert_called()
+    lock.__enter__.assert_called()
+    lock.__exit__.assert_called()
+
+  @patch('threading.RLock')
+  def test_lock(self, RLockMock):
+    lock = RLockMock()
+
+    cache = LruCache()
+    lock.__enter__.assert_not_called()
+    lock.__exit__.assert_not_called()
+
+    cache = LruCache(expires=10)
+    lock.__enter__.assert_called()
+    lock.__exit__.assert_called()
 
 
 def main():
