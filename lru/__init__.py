@@ -1,6 +1,6 @@
-from __future__ import absolute_import
+
+__version__ = '1.0'
+__all___ = ['LruCache', 'lazy_cache', 'lru_cache']
 
 from lru.cache import LruCache
-
-__version__ = '0.0'
-__all___ = 'LruCache'
+from lru.decorators import lazy_cache, lru_cache

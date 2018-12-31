@@ -1,15 +1,19 @@
 # -*- coding: future_fstrings -*-
 from __future__ import absolute_import
+from __future__ import with_statement
 
 import threading
 import time
 import weakref
 
-from functools import total_ordering
+from functools import total_ordering, wraps
 from lru.compat import queue, MutableMapping
+
 
 _sentinel = object()
 _infinite = object()
+
+_DEFAULT_CACHE_SIZE = 128
 
 
 def lock(method):
@@ -97,7 +101,7 @@ class CacheCleaner(threading.Thread):
               if (fast and node) and (fast < node):
                 node_queue.put(node)
                 node = fast
-              else:
+              elif fast is not None:
                 node_queue.put(fast)
             except queue.Empty:
               pass
@@ -142,8 +146,8 @@ class LruCache(MutableMapping):
     if not args:
       raise ValueError('__init__() needs an argument')
     self, args = args[0], args[1:]
-    kwargs = kwargs or {'capacity':10}
-    if kwargs.setdefault('capacity', 10) <= 0:
+    kwargs = kwargs or {'capacity':_DEFAULT_CACHE_SIZE}
+    if kwargs.setdefault('capacity', _DEFAULT_CACHE_SIZE) <= 0:
       raise ValueError('capacity should not be less than or equal to 0')
     try:
       self._capacity
