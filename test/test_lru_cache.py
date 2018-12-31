@@ -1,3 +1,4 @@
+# -*- coding: future_fstrings -*-
 import os
 import sys
 import unittest
@@ -118,6 +119,7 @@ class LruCacheTestCase(unittest.TestCase):
   def test_repr(self):
     pairs = [('a', 1), ('b', 2), ('c', 3), ('d', 4)]
     cache = LruCache(pairs)
+
     self.assertEqual(repr(cache),'\n'.join(['%s:%s' % (key, value)
         for key, value in pairs[::-1]]))
     self.assertEqual(repr(LruCache()), str())

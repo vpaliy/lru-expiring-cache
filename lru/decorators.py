@@ -22,7 +22,6 @@ def lru_cache(maxsize=128, expires=10*60):
     @wraps(function)
     def _lru_wrapper(*args, **kwargs):
       key = _get_key(function, args, kwargs)
-      print(key)
       if key in cache:
         return cache[key]
       result = function(*args, **kwargs)

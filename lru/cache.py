@@ -238,7 +238,7 @@ class LruCache(MutableMapping):
 
   @lock
   def __eq__(self, other):
-    if isinstance(other, LRUCache):
+    if isinstance(other, LruCache):
       if len(other) == len(self):
         node = self._root.next
         for key, value in other.items():
@@ -263,7 +263,7 @@ class LruCache(MutableMapping):
       del self[key]
 
   def copy(self):
-    return LRUCache(self.items()[::-1])
+    return LruCache(self.items()[::-1])
 
   @lock
   def _iterator(self):
