@@ -74,14 +74,14 @@ def _create_node(key=None, value=None, next=None, prev=None, expires=None):
   return _Node(**locals())
 
 
-class CacheCleaner(threading.Thread):
+class _CacheCleaner(threading.Thread):
   daemon = True
 
   def __init__(self, queue, cache, condition, **kwargs):
     self._queue = queue
     self._cache_ref = weakref.ref(cache)
     self._condition = condition
-    super(CacheCleaner, self).__init__(**kwargs)
+    super(_CacheCleaner, self).__init__(**kwargs)
 
   def run(self):
     node_queue = self._queue
@@ -113,11 +113,11 @@ class CacheCleaner(threading.Thread):
           cache = None
 
 
-class CleanManager(object):
+class _CleanManager(object):
   def __init__(self, cache):
     self._queue = queue.PriorityQueue()
     self._condition = threading.Condition()
-    self._cache_cleaner = CacheCleaner(
+    self._cache_cleaner = _CacheCleaner(
       self._queue, cache, self._condition
     )
     self._initialized = False
@@ -166,7 +166,7 @@ class LruCache(MutableMapping):
     self.update(*args, **kwargs)
 
   def _init_cleaner(self):
-    self._cleaner = CleanManager(self)
+    self._cleaner = _CleanManager(self)
     self._lock = threading.RLock()
 
   def _bump_up(self, node):
@@ -205,6 +205,7 @@ class LruCache(MutableMapping):
     node = _create_node(key, value, expires=expires)
     self._mapping[key] = node
     self._connect_with_root(node)
+    # TODO: remove the hasattr checks
     if expires and not hasattr(self, '_cleaner'):
       self._init_cleaner()
     if hasattr(self, '_cleaner'):
@@ -213,7 +214,7 @@ class LruCache(MutableMapping):
   def _get_expiration_time(self, expires):
     if expires is not None:
       expires = time.time() + expires
-    elif self._expires is not None:
+    elif hasattr(self, '_expires'):
       expires = time.time() + self._expires
     return expires
 
