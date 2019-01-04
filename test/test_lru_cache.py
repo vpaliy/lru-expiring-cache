@@ -4,12 +4,15 @@ import sys
 import unittest
 
 try:
-  from unittest.mock import patch
+  import unittest.mock as mock
 except ImportError:
-  from mock import patch
+  import mock
 
 from lru import LruCache
-from lru.cache import _create_node, _ExpNode, _Node, lock
+from lru.cache import (
+  _create_node, _ExpNode, _Node,
+  _CleanManager
+)
 
 
 def _get_printable(items):
@@ -150,9 +153,9 @@ class LruCacheTestCase(unittest.TestCase):
     node = _create_node()
     self.assertIsInstance(node, _Node)
 
-  @patch('threading.RLock')
-  @patch('lru.cache._CleanManager')
-  @patch('lru.cache._create_node')
+  @mock.patch('threading.RLock')
+  @mock.patch('lru.cache._CleanManager')
+  @mock.patch('lru.cache._create_node')
   def test_add(self, create_mock, CleanManagerMock, RLockMock):
     cleanManager = CleanManagerMock()
     lock = RLockMock()
@@ -172,9 +175,9 @@ class LruCacheTestCase(unittest.TestCase):
     lock.__enter__.assert_called()
     lock.__exit__.assert_called()
 
-  @patch('threading.RLock')
-  @patch('lru.cache._CleanManager')
-  @patch('lru.cache._create_node')
+  @mock.patch('threading.RLock')
+  @mock.patch('lru.cache._CleanManager')
+  @mock.patch('lru.cache._create_node')
   def test_delete(self, create_mock, CleanManagerMock, RLockMock):
     cleanManager = CleanManagerMock()
     lock = RLockMock()
@@ -190,7 +193,7 @@ class LruCacheTestCase(unittest.TestCase):
     lock.__enter__.assert_called()
     lock.__exit__.assert_called()
 
-  @patch('threading.RLock')
+  @mock.patch('threading.RLock')
   def test_lock(self, RLockMock):
     lock = RLockMock()
 
@@ -201,6 +204,50 @@ class LruCacheTestCase(unittest.TestCase):
     cache = LruCache(expires=10)
     lock.__enter__.assert_called()
     lock.__exit__.assert_called()
+
+
+class CleanManagerTestCase(unittest.TestCase):
+  @mock.patch('threading.Condition')
+  @mock.patch('queue.PriorityQueue')
+  @mock.patch('lru.cache._CacheCleaner')
+  def setUp(self, CacheCleanerMock, QueueMock, ConditionMock):
+    self.cleaner_mock = CacheCleanerMock()
+    self.queue_mock = QueueMock()
+    self.condition_mock = ConditionMock()
+    self.cache_mock = cache = mock.MagicMock()
+    self.clean_manager = _CleanManager(cache)
+
+  def _assert_on_add(self, node):
+    self.queue_mock.put.assert_called_once_with(node)
+    self.condition_mock.__enter__.assert_called_once()
+    self.condition_mock.__exit__.assert_called_once()
+    self.condition_mock.notify.assert_called()
+
+  @mock.patch('weakref.proxy')
+  def test_add(self, proxy_mock):
+    node = _ExpNode()
+    proxy_mock.return_value = node
+
+    self.clean_manager.add(node)
+    self.cleaner_mock.start.assert_called_once()
+    self._assert_on_add(node)
+
+  @mock.patch('weakref.proxy')
+  def test_add_when_initialized(self, proxy_mock):
+    node = _ExpNode()
+    proxy_mock.return_value = node
+
+    self.clean_manager._initialized = True
+    self.clean_manager.add(node)
+
+    self.cleaner_mock.start.assert_not_called()
+    self._assert_on_add(node)
+
+  def test_delete(self):
+    self.clean_manager.on_delete()
+    self.condition_mock.__enter__.assert_called_once()
+    self.condition_mock.__exit__.assert_called_once()
+    self.condition_mock.notify.assert_called()
 
 
 def main():
