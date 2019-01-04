@@ -2,7 +2,11 @@
 import os
 import sys
 import unittest
-from unittest.mock import patch
+
+try:
+  from unittest.mock import patch
+except ImportError:
+  from mock import patch
 
 from lru import LruCache
 from lru.cache import _create_node, _ExpNode, _Node, lock

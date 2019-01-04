@@ -22,7 +22,7 @@ def lru_cache(maxsize=128, expires=10*60):
     @wraps(function)
     def _lru_wrapper(*args, **kwargs):
       key = _get_key(function, args, kwargs)
-      if key in cache:
+      if cache.__contains__(key):
         return cache[key]
       result = function(*args, **kwargs)
       cache[key] = result
@@ -35,11 +35,15 @@ def _is_stale(entry, time_limit):
   return (time.time() - entry.time) > time_limit
 
 
+def _get_lazy_cache():
+  return dict()
+
 _Entry = namedtuple('Entry', 'value time')
 
 
 def lazy_cache(maxsize=128, expires=10*60):
-  cache = {}
+  # for testing purposes
+  cache = _get_lazy_cache()
   def _lazy_cache(function):
     @wraps(function)
     def _lazy_cache_wrapper(*args, **kwargs):
