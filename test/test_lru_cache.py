@@ -3,11 +3,24 @@ import os
 import sys
 import unittest
 
+try:
+  import unittest.mock as mock
+except ImportError:
+  import mock
+
 from lru import LruCache
+from lru.cache import (
+  _create_node, _ExpNode, _Node,
+  _CleanManager
+)
+
+
+def _get_printable(items):
+  items = ', '.join(f"{k}: {v}" for k, v in items)
+  return f'{{{items}}}'
 
 
 class LruCacheTestCase(unittest.TestCase):
-
   def test_init(self):
     with self.assertRaises(ValueError):
       LruCache(capacity=0)
@@ -22,11 +35,11 @@ class LruCacheTestCase(unittest.TestCase):
     self.assertEqual(sorted(cache.items()), pairs + [('e', 5), ('t', 6)])
 
   def test_setitem(self):
-    with self.assertRaises(TypeError):
+    with self.assertRaises(ValueError):
       LruCache()['a'] = None
-    with self.assertRaises(TypeError):
+    with self.assertRaises(ValueError):
       LruCache()[None] = 'a'
-    with self.assertRaises(TypeError):
+    with self.assertRaises(ValueError):
       LruCache()[None] = None
     cache = LruCache(capacity=10)
     cache['a'] = 1
@@ -120,9 +133,8 @@ class LruCacheTestCase(unittest.TestCase):
     pairs = [('a', 1), ('b', 2), ('c', 3), ('d', 4)]
     cache = LruCache(pairs)
 
-    self.assertEqual(repr(cache),'\n'.join(['%s:%s' % (key, value)
-        for key, value in pairs[::-1]]))
-    self.assertEqual(repr(LruCache()), str())
+    self.assertEqual(repr(cache), _get_printable(pairs[::-1]))
+    self.assertEqual(repr(LruCache()), '{}')
 
   def test_eq(self):
     pairs = [('a', 1), ('b', 2), ('c', 3), ('d', 4)]
@@ -133,6 +145,110 @@ class LruCacheTestCase(unittest.TestCase):
     self.assertFalse(LruCache() == list())
     self.assertFalse(LruCache(pairs) == LruCache(pairs[1:]))
     self.assertFalse(LruCache(pairs) == LruCache(pairs[::-1]))
+
+  def test_create_node(self):
+    node = _create_node(expires=10)
+    self.assertIsInstance(node, _ExpNode)
+
+    node = _create_node()
+    self.assertIsInstance(node, _Node)
+
+  @mock.patch('threading.RLock')
+  @mock.patch('lru.cache._CleanManager')
+  @mock.patch('lru.cache._create_node')
+  def test_add(self, create_mock, CleanManagerMock, RLockMock):
+    cleanManager = CleanManagerMock()
+    lock = RLockMock()
+    node = _ExpNode(key='a', value='b', expires=10)
+    create_mock.return_value = node
+
+    cache = LruCache()
+    cache.add('a', 'b', expires=10)
+
+    cleanManager.add.assert_called_with(node)
+    lock.__enter__.assert_not_called()
+    lock.__exit__.assert_not_called()
+
+    cache.add('a', 'b', expires=10)
+
+    cleanManager.add.assert_called()
+    lock.__enter__.assert_called()
+    lock.__exit__.assert_called()
+
+  @mock.patch('threading.RLock')
+  @mock.patch('lru.cache._CleanManager')
+  @mock.patch('lru.cache._create_node')
+  def test_delete(self, create_mock, CleanManagerMock, RLockMock):
+    cleanManager = CleanManagerMock()
+    lock = RLockMock()
+    node = _ExpNode(key='a', value='b', expires=10)
+    create_mock.return_value = node
+
+    cache = LruCache()
+    cache.add('a', 'b', expires=10)
+    del cache['a']
+
+    cleanManager.add.assert_called_with(node)
+    cleanManager.on_delete.assert_called()
+    lock.__enter__.assert_called()
+    lock.__exit__.assert_called()
+
+  @mock.patch('threading.RLock')
+  def test_lock(self, RLockMock):
+    lock = RLockMock()
+
+    cache = LruCache()
+    lock.__enter__.assert_not_called()
+    lock.__exit__.assert_not_called()
+
+    cache = LruCache(expires=10)
+    lock.__enter__.assert_called()
+    lock.__exit__.assert_called()
+
+
+class CleanManagerTestCase(unittest.TestCase):
+  @mock.patch('threading.Condition')
+  @mock.patch('queue.PriorityQueue')
+  @mock.patch('lru.cache._CacheCleaner')
+  def setUp(self, CacheCleanerMock, QueueMock, ConditionMock):
+    self.cleaner_mock = CacheCleanerMock()
+    self.queue_mock = QueueMock()
+    self.condition_mock = ConditionMock()
+    self.cache_mock = cache = mock.MagicMock()
+    self.clean_manager = _CleanManager(cache)
+
+  def _assert_on_add(self, node):
+    self.queue_mock.put.assert_called_once_with(node)
+    self.condition_mock.__enter__.assert_called_once()
+    self.condition_mock.__exit__.assert_called_once()
+    self.condition_mock.notify.assert_called()
+
+  @mock.patch('weakref.proxy')
+  def test_add(self, proxy_mock):
+    node = _ExpNode()
+    proxy_mock.return_value = node
+
+    self.clean_manager.add(node)
+    self.cleaner_mock.start.assert_called_once()
+    self._assert_on_add(node)
+
+  @mock.patch('weakref.proxy')
+  def test_add_when_initialized(self, proxy_mock):
+    node = _ExpNode()
+    proxy_mock.return_value = node
+
+    self.clean_manager._initialized = True
+    self.clean_manager.add(node)
+
+    self.cleaner_mock.start.assert_not_called()
+    self._assert_on_add(node)
+
+  def test_delete(self):
+    self.clean_manager.on_delete()
+    self.condition_mock.__enter__.assert_called_once()
+    self.condition_mock.__exit__.assert_called_once()
+    self.condition_mock.notify.assert_called()
+
 
 def main():
   unittest.main()
