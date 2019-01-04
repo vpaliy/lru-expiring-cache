@@ -1,0 +1,19 @@
+language: python
+python:
+  - "2.7"
+  - "3.3"
+  - "3.4"
+  - "3.5"
+  - "3.6"
+
+install:
+  - pip install -r requirements.txt
+  - pip install codecov
+
+script:
+  - coverage run -m unittest discover -s tests/
+after_success:
+  - codecov
+  - python -m codacy -r coverage.xml
+sudo: false
+cache: pip
