@@ -64,7 +64,8 @@ class _ExpNode(_Node):
     return self.expires < other.expires
 
   def __repr__(self):
-    return f'<_ExpNode key:{self.key}:({self.remaining})>'
+    classname = self.__class__.__name__
+    return f'{classname} {self.key}:({self.remaining})'
 
 
 def _create_node(key=None, value=None, next=None, prev=None, expires=None):
@@ -103,8 +104,9 @@ class CacheCleaner(threading.Thread):
                 node = fast
               elif fast is not None:
                 node_queue.put(fast)
-            except queue.Empty:
-              pass
+            except (queue.Empty, ReferenceError) as error:
+              if isinstance(error, ReferenceError):
+                node = fast
           node_queue.task_done()
           if cache and node:
             del cache[node.key]
