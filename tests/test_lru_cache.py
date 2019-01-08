@@ -208,7 +208,7 @@ class LruCacheTestCase(unittest.TestCase):
 
 class CleanManagerTestCase(unittest.TestCase):
   @mock.patch('threading.Condition')
-  @mock.patch('queue.PriorityQueue')
+  @mock.patch('lru.compat.queue.PriorityQueue')
   @mock.patch('lru.cache._CacheCleaner')
   def setUp(self, CacheCleanerMock, QueueMock, ConditionMock):
     self.cleaner_mock = CacheCleanerMock()
