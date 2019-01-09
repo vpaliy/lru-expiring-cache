@@ -11,7 +11,7 @@ from setuptools import setup, find_packages, Command
 here = os.path.abspath(os.path.dirname(__file__))
 
 
-name = 'lru-expiry-cache'
+name = 'lru-expiring-cache'
 description = 'LRU cache with that supports data expiration'
 url = 'https://github.com/vpaliy/lru-cache'
 email = 'vpaliy97@gmail.com'
@@ -26,7 +26,7 @@ with io.open(os.path.join(here, 'lru', '__init__.py'), encoding='utf-8') as fp:
 
 try:
   with io.open(os.path.join(here, 'README.md'), encoding='utf-8') as f:
-    long_description = '\n' + f.read()
+    long_description = f.read()
 except FileNotFoundError:
     long_description = str()
 

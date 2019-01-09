@@ -1,4 +1,4 @@
-# LRU Cache
+# LRU Expiring Cache
 
 [![Build Status](https://travis-ci.org/vpaliy/lru-cache.svg?branch=master)](https://travis-ci.org/vpaliy/lru-cache)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -11,13 +11,13 @@ LRU cache uses a daemon thread - AKA cache cleaner - to silently clean up expire
 
 ### Install
 
-`pip install lru-cache`
+`pip install lru-expiring-cache`
 
 or:
 
 ```
- $ git clone https://github.com/vpaliy/lru-cache.git
- $ cd lru-cache/
+ $ git clone https://github.com/vpaliy/lru-expiring-cache.git
+ $ cd lru-expiring-cache/
 ```
 
 
