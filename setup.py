@@ -11,8 +11,8 @@ from setuptools import setup, find_packages, Command
 here = os.path.abspath(os.path.dirname(__file__))
 
 
-name = 'lru-cache'
-description = 'LRU cache with nodes that expire'
+name = 'lru-expiry-cache'
+description = 'LRU cache with that supports data expiration'
 url = 'https://github.com/vpaliy/lru-cache'
 email = 'vpaliy97@gmail.com'
 author = 'Vasyl Paliy'
