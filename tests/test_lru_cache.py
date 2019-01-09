@@ -23,7 +23,7 @@ def _get_printable(items):
 class LruCacheTestCase(unittest.TestCase):
   def test_init(self):
     with self.assertRaises(ValueError):
-      LruCache(capacity=0)
+      LruCache(maxsize=0)
     pairs = [('a', 1), ('b', 2), ('c', 3), ('d', 4)]
     self.assertEqual(sorted(LruCache(pairs).items()), pairs)
     self.assertEqual(sorted(LruCache(dict(pairs)).items()), pairs)
@@ -41,7 +41,7 @@ class LruCacheTestCase(unittest.TestCase):
       LruCache()[None] = 'a'
     with self.assertRaises(ValueError):
       LruCache()[None] = None
-    cache = LruCache(capacity=10)
+    cache = LruCache(maxsize=10)
     cache['a'] = 1
     cache['b'] = 2
     self.assertEqual(cache.items(), [('b', 2), ('a', 1)])
