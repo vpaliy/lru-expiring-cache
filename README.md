@@ -1,6 +1,8 @@
 # LRU Cache
 
 [![Build Status](https://travis-ci.org/vpaliy/lru-cache.svg?branch=master)](https://travis-ci.org/vpaliy/lru-cache)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![codecov](https://codecov.io/gh/vpaliy/lru-cache/branch/master/graph/badge.svg)](https://codecov.io/gh/vpaliy/lru-cache)
 
 This repository contains a dictionary-like data structure, supporting LRU caching semantics and data expiration mechanism. You can add a new record to the cache and assign an expiration time for that record. Records are not required to have the same "life span": you can mix them up, and it will still work.
 
@@ -43,7 +45,7 @@ cache.add(key='foo', value='bar', expires=10)
 del cache['foo']
  ```
 
-To make the LRU cache thread-safe, just pass 'concurrent=True' when constructing a new instance:
+To make the LRU cache thread-safe, just pass `concurrent=True` when constructing a new instance:
 
 ```python
 from lru import LruCache
@@ -55,8 +57,8 @@ Note: LRU cache extends the `MutableMapping` interface from the standard library
 
 Additionally, you can use cache decorators:
 
-- lru_cache(maxsize, expires)
-- lazy_cache(maxsize, expires)
+- `lru_cache(maxsize, expires)`
+- `lazy_cache(maxsize, expires)`
 
 Both are memoization decorators that support data expiration. The difference is that `lru_cache` uses `LruCache` (obviously) under the hood, and `lazy_cache` uses the native `dict`.
 
