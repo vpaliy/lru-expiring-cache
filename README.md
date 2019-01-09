@@ -11,12 +11,12 @@ LRU cache uses a daemon thread - AKA cache cleaner - to silently clean up expire
 
 ### Install
 
-`pip install lru-cache`
+`pip install lru--expiry-cache`
 
 or:
 
 ```
- $ git clone https://github.com/vpaliy/lru-cache.git
+ $ git clone https://github.com/vpaliy/lru-expiry-cache.git
  $ cd lru-cache/
 ```
 
