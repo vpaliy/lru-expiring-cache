@@ -1,8 +1,8 @@
 # LRU Expiring Cache
 
-[![Build Status](https://travis-ci.org/vpaliy/lru-cache.svg?branch=master)](https://travis-ci.org/vpaliy/lru-cache)
+[![Build Status](https://travis-ci.org/vpaliy/lru-expiring-cache.svg?branch=master)](https://travis-ci.org/vpaliy/lru-expiring-cache)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![codecov](https://codecov.io/gh/vpaliy/lru-cache/branch/master/graph/badge.svg)](https://codecov.io/gh/vpaliy/lru-cache)
+[![codecov](https://codecov.io/gh/vpaliy/lru-expiring-cache/branch/master/graph/badge.svg)](https://codecov.io/gh/vpaliy/lru-expiring-cache)
 
 This repository contains a dictionary-like data structure, supporting LRU caching semantics and data expiration mechanism. You can add a new record to the cache and assign an expiration time for that record. Records are not required to have the same "life span": you can mix them up, and it will still work.
 
