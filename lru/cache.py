@@ -15,7 +15,7 @@ import time
 import weakref
 
 from functools import total_ordering, wraps
-from lru.compat import queue, MutableMapping
+from lru.compat import queue, MutableMapping, monotonic
 
 # internal objects
 
@@ -73,11 +73,11 @@ class _ExpNode(_Node):
   @property
   def remaining(self):
     """Returns how much time the record has before being deleted."""
-    return self.expires - time.time()
+    return self.expires - monotonic()
 
   @property
   def is_expired(self):
-    return time.time() > self.expires
+    return monotonic() > self.expires
 
   def __eq__(self, other):
     if not isinstance(other, _ExpNode):
@@ -333,9 +333,9 @@ class LruCache(MutableMapping):
 
   def _get_expiration_time(self, expires):
     if expires is not None:
-      expires = time.time() + expires
+      expires = monotonic() + expires
     elif self._expires is not None:
-      expires = time.time() + self._expires
+      expires = monotonic() + self._expires
     return expires
 
   @lock

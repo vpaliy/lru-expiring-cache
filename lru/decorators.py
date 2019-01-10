@@ -11,7 +11,9 @@ import pickle
 from hashlib import sha1
 from collections import namedtuple
 from functools import wraps
+
 from lru import LruCache
+from lru.compat import monotonic
 
 
 def _get_key(function, args, kwargs):
@@ -79,7 +81,7 @@ def lru_cache(maxsize=128, expires=10*60):
 
 def _is_stale(entry, time_limit):
   # check if the current entry has expired
-  return (time.time() - entry.time) > time_limit
+  return (monotonic() - entry.time) > time_limit
 
 
 def _get_lazy_cache():
@@ -128,7 +130,7 @@ def lazy_cache(maxsize=128, expires=10*60):
       if len(cache) > maxsize:
         cache.clear()
       result = function(*args, **kwargs)
-      cache[key] = _Entry(result, time.time() + expires)
+      cache[key] = _Entry(result, monotonic() + expires)
       return result
     return _lazy_cache_wrapper
   return _lazy_cache
