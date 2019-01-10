@@ -1,5 +1,5 @@
 
-__version__ = '1.0'
+__version__ = '1.1'
 __all___ = ['LruCache', 'lazy_cache', 'lru_cache']
 
 from lru.cache import LruCache

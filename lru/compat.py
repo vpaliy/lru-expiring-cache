@@ -22,3 +22,9 @@ elif is_py3:
     builtin_str = str
     str = str
     bytes = bytes
+
+
+if _ver < (3, 3):
+  from monotonic import monotonic
+else:
+  from time import monotonic
