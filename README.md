@@ -86,7 +86,7 @@ function(10, 10, 10) # sleeps for 10 seconds because all cached results have exp
 
 Which one to use?
 
-If your function requires the functionality of LRU cache (removing the least recently used records to give room to the new ones), then use `lru_cache`; otherwise if you just need an expiring caching mechaniism, use `lazy_cache`. Note that `lazy_cache` clears the entire cache when the number of records have reached `maxsize`.
+If your function requires the functionality of LRU cache (removing the least recently used records to free space for new ones) then use `lru_cache`; otherwise, if you just need an expiring caching mechaniism, use `lazy_cache`. Note that `lazy_cache` clears the entire cache when the number of records has reached `maxsize`.
 
 
 ## License
