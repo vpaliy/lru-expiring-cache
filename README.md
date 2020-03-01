@@ -89,6 +89,14 @@ Which one to use?
 If your function requires the functionality of LRU cache (removing the least recently used records to give room to the new ones), then use `lru_cache`; otherwise if you just need an expiring caching mechaniism, use `lazy_cache`. Note that `lazy_cache` clears the entire cache when the number of records have reached `maxsize`.
 
 
+### Testing
+
+To run the tests, use:
+
+```
+ $ python3 -m unittest discover tests/
+```
+
 ## License
 ```
 MIT License
